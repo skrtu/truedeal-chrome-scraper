@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Content Grabber Extension</title>
+    <link href="./styles/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles/popup.css" />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 10px;
+        overflow: scroll;
+      }
+
+      @media (max-width: 768px) {
+        .sidebar {
+          width: 0;
+          overflow: hidden;
+        }
+
+        .sidebar.active {
+          width: fit-content;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container">
+        <div
+          class="navbar-logo"
+          style="display: flex; align-items: center; gap: 6px"
+        >
+          <img src="./img_assets/logo.png" style="width: 30px; height: 30px" />
+          <div class="navbar-brand">Apprasial Scraper</div>
+        </div>
+      </div>
+    </nav>
+    <div class="d-flex h-100">
+      <!-- Sidebar -->
+
+      <!-- Main Content -->
+      <div class="content flex-grow-1 p-5">
+        <div class="bg-white shadow rounded p-4 mb-4">
+          <span
+            class="img_span"
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              height: 40px;
+            "
+            ><img src="" id="favicon_img" style="height: 30px; width: 30px"
+          /></span>
+          <div style="display: flex; flex-direction: row; flex-wrap: wrap">
+            <div id="dataPreview"></div>
+          </div>
+        </div>
+
+        <button id="copyButton" class="btn btn-primary w-100">
+          Copy to cliboard
+        </button>
+        <button class="btn btn-success mt-2 w-100" id="exportButton">
+          Export to Google Sheets
+        </button>
+        <div id="status"></div>
+      </div>
+    </div>
+
+  
+    <script src="./js/popup.js"></script>
+  </body>
+</html>

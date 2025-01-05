@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Real Estate Scraper",
+  "version": "1.0",
+  "description": "Scrape Real Estate data from property appraisal sites",
+  "permissions": [
+    "identity",
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://web.bcpa.net/*",
+    "https://miamidade.gov/*",
+    "https://collierappraiser.com/*",
+    "https://paopropertysearch.coj.net/*",
+    "https://accounts.google.com/*",
+    "https://sheets.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "758411717683-ndvldp52907jn40hr7dmhoqu06pij42i.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.file"
+    ]
+  },
+  "background": {
+    "service_worker": "background/service_worker.js"
+  },
+  "action": {
+    "default_popup": "popup_pages/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.collierappraiser.com/*","https://*.web.bcpa.net/*", "https://*.miamidade.gov/*", "https://*.paopropertysearch.coj.net/*"],
+      "js": ["content/content_script.js"]
+    }
+  ]
+
+}
