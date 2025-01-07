@@ -430,6 +430,90 @@ class TableParser {
       return null;
     }
   }
+
+   miamidadeexceptions() {
+    try {
+
+        let doc = document
+        let data = {
+          propertyInfo: {},
+          taxMatrix: {}
+      };
+        // Extract property information if present
+        const propertySection = doc.querySelector('pa-propertyinformation');
+        if (propertySection) {
+            const rows = propertySection.querySelectorAll('tr');
+            rows.forEach(row => {
+                const text = row.textContent.trim();
+                
+                if (text.includes('Folio:')) {
+                    data.propertyInfo.folio = text.split('Folio:')[1].trim();
+                }
+                if (text.includes('Property Address')) {
+                    const addressDiv = row.querySelector('.property-add');
+                    data.propertyInfo.propertyAddress = addressDiv ? addressDiv.textContent.trim() : '';
+                }
+                if (text.includes('Owner')) {
+                    const ownerDiv = row.querySelector('.pa-font-size-11');
+                    data.propertyInfo.owner = ownerDiv ? ownerDiv.textContent.trim() : '';
+                }
+                if (text.includes('Primary Land Use')) {
+                    const useDiv = row.querySelector('.pt-0.pb-0');
+                    data.propertyInfo.primaryLandUse = useDiv ? useDiv.textContent.trim() : '';
+                }
+            });
+        }
+
+        // Extract taxable value information in matrix format
+        const taxSection = doc.querySelector('pa-taxablevalueinformation');
+        if (taxSection) {
+            // Get years from header
+            const years = Array.from(taxSection.querySelectorAll('.header-row td span'))
+                .map(span => span.textContent.trim())
+                .filter(year => !isNaN(year));
+
+            const authorities = ['COUNTY', 'SCHOOL BOARD', 'CITY', 'REGIONAL'];
+            let currentAuthority = null;
+
+            const rows = taxSection.querySelectorAll('tr');
+            rows.forEach(row => {
+                const text = row.textContent.trim();
+                
+                // Check if this is an authority header row
+                authorities.forEach(authority => {
+                    if (text === authority) {
+                        currentAuthority = authority.toLowerCase().replace(' ', '_');
+                    }
+                });
+
+                // Extract values if we have a current authority
+                if (currentAuthority) {
+                    if (text.includes('Exemption Value')) {
+                        const values = Array.from(row.querySelectorAll('.text-end-mine span'))
+                            .map(span => span.textContent.trim());
+                        years.forEach((year, index) => {
+                            data.taxMatrix[`${currentAuthority}_exemptionvalue_${year}`] = values[index];
+                        });
+                    }
+                    if (text.includes('Taxable Value')) {
+                        const values = Array.from(row.querySelectorAll('.text-end-mine span'))
+                            .map(span => span.textContent.trim());
+                        years.forEach((year, index) => {
+                            data.taxMatrix[`${currentAuthority}_taxablevalue_${year}`] = values[index];
+                        });
+                    }
+                }
+            });
+        }
+
+        console.log('Extracted Data:', data);
+        return {...data.propertyInfo,...data.taxMatrix} ;
+
+    } catch (error) {
+        console.error('Error extracting data:', error);
+        return null;
+    }
+}
 }
 
 class SchemaTableProcessor {
@@ -549,7 +633,8 @@ class SchemaTableProcessor {
             
           }
           return parser.getFormData()
-          
+      case "runmiamiexceptions":
+        return parser.miamidadeexceptions()
 
       default:
         return parser.getAllData();

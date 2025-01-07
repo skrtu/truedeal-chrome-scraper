@@ -1,185 +1,171 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const copyButton = document.getElementById("copyButton");
-  const exportButton = document.getElementById("exportButton");
-  const statusDiv = document.getElementById("status");
-  const favicon = document.getElementById("favicon_img");
-  const dataPreview = document.getElementById("dataPreview");
-  let scrapedData = null;
+// Cache DOM elements and initialize variables at the start
+const ELEMENTS = {
+  copyButton: null,
+  exportButton: null,
+  statusDiv: null,
+  favicon: null,
+  dataPreview: null
+};
 
-  chrome.tabs.query({ active: true }, (tabs) => {
-    favicon.setAttribute("src", tabs[0].favIconUrl);
+let scrapedData = null;
+const STATUS_TIMEOUT = 2000;
+const PREVIEW_LIMIT = 5;
+
+// Initialize DOM elements once document is loaded
+const initializeElements = () => {
+  ELEMENTS.copyButton = document.getElementById("copyButton");
+  ELEMENTS.exportButton = document.getElementById("exportButton");
+  ELEMENTS.statusDiv = document.getElementById("status");
+  ELEMENTS.favicon = document.getElementById("favicon_img");
+  ELEMENTS.dataPreview = document.getElementById("dataPreview");
+};
+
+// Optimize status updates with pre-defined styles
+const STATUS_STYLES = {
+  success: "mt-4 p-3 bg-success text-white rounded",
+  error: "mt-4 p-3 bg-danger text-white rounded",
+  warning: "mt-4 p-3 bg-warning text-white rounded",
+  info: "mt-4 p-3 bg-primary text-white rounded"
+};
+
+const updateStatus = (message, type = 'info', autoHide = true) => {
+  ELEMENTS.statusDiv.className = STATUS_STYLES[type];
+  ELEMENTS.statusDiv.textContent = message;
+
+  if (autoHide) {
+    setTimeout(() => {
+      ELEMENTS.statusDiv.style.opacity = "0";
+      setTimeout(() => {
+        ELEMENTS.statusDiv.textContent = "";
+        ELEMENTS.statusDiv.style.opacity = "1";
+      }, 500);
+    }, STATUS_TIMEOUT);
+  }
+};
+
+// Optimize preview card creation with template strings and minimal DOM operations
+const createPreviewCard = (key, value) => {
+  const card = document.createElement("div");
+  card.className = "preview-card";
+  card.innerHTML = `
+    <div class="key" style="font-size:12px;color:#6c757d;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;font-weight:600">
+      ${key}
+    </div>
+    <div class="value" style="font-size:14px;color:#212529;word-break:break-word;font-weight:500">
+      ${value || "N/A"}
+    </div>
+  `;
+  
+  // Use CSS transforms for better performance
+  card.style.cssText = `
+    background:#f8f9fa;
+    border-radius:8px;
+    padding:12px;
+    margin:8px;
+    flex:1 1 calc(50% - 16px);
+    min-width:200px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.05);
+    transform:translateY(0);
+    transition:transform 0.2s ease,box-shadow 0.2s ease;
+  `;
+
+  return card;
+};
+
+// Optimize data preview with DocumentFragment
+const displayDataPreview = (data) => {
+  const fragment = document.createDocumentFragment();
+  const previewContainer = document.createElement("div");
+  
+  previewContainer.style.cssText = `
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:16px;
+    max-height:400px;
+    overflow-y:auto;
+    padding-right:8px;
+    scrollbar-width:thin;
+    scrollbar-color:#6c757d #f8f9fa;
+  `;
+
+  const entries = Object.entries(data);
+  entries.slice(0, PREVIEW_LIMIT).forEach(([key, value]) => {
+    previewContainer.appendChild(createPreviewCard(key, value));
   });
 
-  // Function to create a pretty preview card for a key-value pair
-  const createPreviewCard = (key, value) => {
-    const card = document.createElement("div");
-    card.className = "preview-card";
-    card.style.cssText = `
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 12px;
-      margin: 8px;
-      flex: 1 1 calc(50% - 16px);
-      min-width: 200px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    `;
+  if (entries.length > PREVIEW_LIMIT) {
+    previewContainer.insertAdjacentHTML(
+      'beforeend',
+      `<div style="width:100%;text-align:center;padding:12px;color:#6c757d;font-size:13px;font-style:italic">
+        + ${entries.length - PREVIEW_LIMIT} more items
+      </div>`
+    );
+  }
 
-    // Add hover effect
-    card.addEventListener("mouseenter", () => {
-      card.style.transform = "translateY(-2px)";
-      card.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)";
-    });
+  fragment.appendChild(previewContainer);
+  ELEMENTS.dataPreview.innerHTML = "";
+  ELEMENTS.dataPreview.appendChild(fragment);
+};
 
-    card.addEventListener("mouseleave", () => {
-      card.style.transform = "translateY(0)";
-      card.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
-    });
+// Optimize clipboard operations
+const copyToClipboard = async (data) => {
+  if (!data) {
+    updateStatus("No data available to copy!", "warning");
+    return;
+  }
 
-    const keyElement = document.createElement("div");
-    keyElement.className = "key";
-    keyElement.style.cssText = `
-      font-size: 12px;
-      color: #6c757d;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-      font-weight: 600;
-    `;
-    keyElement.textContent = key;
+  try {
+    const tableText = `${Object.keys(data).join("\t")}\n${Object.values(data).join("\t")}`;
+    await navigator.clipboard.writeText(tableText);
+    updateStatus("Copied to Clipboard", "success");
+  } catch (err) {
+    updateStatus(err.message, "error");
+  }
+};
 
-    const valueElement = document.createElement("div");
-    valueElement.className = "value";
-    valueElement.style.cssText = `
-      font-size: 14px;
-      color: #212529;
-      word-break: break-word;
-      font-weight: 500;
-    `;
-    valueElement.textContent = value || "N/A";
+// Main initialization
+document.addEventListener("DOMContentLoaded", () => {
+  initializeElements();
 
-    card.appendChild(keyElement);
-    card.appendChild(valueElement);
-    return card;
-  };
-
-  // Function to display preview of the first 5 items
-  const displayDataPreview = (data) => {
-    dataPreview.innerHTML = ""; // Clear existing content
-
-    // Create container for preview cards
-    const previewContainer = document.createElement("div");
-    previewContainer.style.cssText = `
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 16px;
-      max-height: 400px;
-      overflow-y: auto;
-      padding-right: 8px;
-    `;
-
-    // Add custom scrollbar styles
-    previewContainer.addEventListener("mouseenter", () => {
-      previewContainer.style.cssText += `
-        scrollbar-width: thin;
-        scrollbar-color: #6c757d #f8f9fa;
-      `;
-    });
-
-    // Get the first 5 entries
-    const entries = Object.entries(data);
-    const previewEntries = entries.slice(0, 5);
-
-    // Create a preview card for each entry
-    previewEntries.forEach(([key, value]) => {
-      const card = createPreviewCard(key, value);
-      previewContainer.appendChild(card);
-    });
-
-    // Add "more items" indicator if there are more than 5 items
-    if (entries.length > 5) {
-      const moreItems = document.createElement("div");
-      moreItems.style.cssText = `
-        width: 100%;
-        text-align: center;
-        padding: 12px;
-        color: #6c757d;
-        font-size: 13px;
-        font-style: italic;
-      `;
-      moreItems.textContent = `+ ${entries.length - 5} more items`;
-      previewContainer.appendChild(moreItems);
-    }
-
-    dataPreview.appendChild(previewContainer);
-  };
-
-  // Listen for messages from the content script
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Set up message listener
+  chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "SCRAPED_DATA") {
       scrapedData = message.data;
       displayDataPreview(scrapedData);
     }
   });
 
-  // Copy button click handler
-  copyButton.addEventListener("click", () => {
-    if (scrapedData) {
-      const tableText = [
-        Object.keys(scrapedData).join("\t"),
-        Object.values(scrapedData).join("\t"),
-      ].join("\n");
-
-      navigator.clipboard
-        .writeText(tableText)
-        .then(() => {
-          statusDiv.className = "mt-4 p-3 bg-success text-white rounded";
-          statusDiv.textContent = "Copied to Clipboard";
-
-          // Add fade out effect for status message
-          setTimeout(() => {
-            statusDiv.style.transition = "opacity 0.5s ease-out";
-            statusDiv.style.opacity = "0";
-            setTimeout(() => {
-              statusDiv.textContent = "";
-              statusDiv.style.opacity = "1";
-            }, 500);
-          }, 2000);
-        })
-        .catch((err) => {
-          statusDiv.className = "mt-4 p-3 bg-danger text-white rounded";
-          statusDiv.textContent = err;
-        });
-    } else {
-      statusDiv.className = "mt-4 p-3 bg-warning text-white rounded";
-      statusDiv.textContent = "No data available to copy!";
+  // Set favicon
+  chrome.tabs.query({ active: true }, ([tab]) => {
+    if (tab?.favIconUrl) {
+      ELEMENTS.favicon.src = tab.favIconUrl;
     }
   });
 
-  // Export button click handler
-  exportButton.addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  // Event listeners
+  ELEMENTS.copyButton.addEventListener("click", () => copyToClipboard(scrapedData));
+  
+  ELEMENTS.exportButton.addEventListener("click", () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
       chrome.runtime.sendMessage(
-        { type: "EXPORTSHEETS", url: tabs[0].url },
+        { type: "EXPORTSHEETS", url: tab.url },
         (response) => {
-          statusDiv.className = "mt-4 p-3 bg-primary text-white rounded";
-          statusDiv.textContent = "Exporting Table...";
-
-          if (response.success) {
-            statusDiv.className = "mt-4 p-3 bg-success text-white rounded";
-            statusDiv.textContent = response.message;
-          } else {
-            statusDiv.className = "mt-4 p-3 bg-danger text-white rounded";
-            statusDiv.textContent = response.message;
-          }
+          updateStatus(
+            response.message,
+            response.success ? "success" : "error",
+            !response.success
+          );
         }
       );
     });
   });
 
-  // Request the content script to scrape data
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.runtime.sendMessage({ type: "SCRAPE_DATA_POPUP", tab: {url: tabs[0].url, tab:{id: tabs[0].id }} });
+  // Initial data scrape request
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    chrome.runtime.sendMessage({
+      type: "SCRAPE_DATA_POPUP",
+      tab: { url: tab.url, tab: { id: tab.id } }
+    });
   });
 });

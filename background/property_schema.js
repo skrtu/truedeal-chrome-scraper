@@ -234,6 +234,9 @@ const bcpaSchema = {
 };
 
 const miamidadeSchema = {
+  exceptions:{
+    function:"runmiamiexceptions"
+  },
   propertyInformation: {
     constants: {
       County: "Miamidade County",
@@ -253,16 +256,7 @@ const miamidadeSchema = {
     },
     function: "getalldata",
   },
-  taxValue: {
-    tableSelector: ".tax-value-table table",
-    tableType: "matrix",
-    ignoreRows: {
-      values: ["Taxable value information" ,"County", "School Board", "City", "Regional"],
-      columns: [0],
-      caseSensitive: false
-    },
-    function: "getalldata",
-  },
+
   legalDescription:{
     tableSelector:"pa-legaldescription div table",
     tableType:"vertical",
@@ -284,8 +278,26 @@ const miamidadeSchema = {
     },
     function: "getalldata",
   },
+  benefitsInformation: {
+    tableSelector: "pa-benefitsinformation div table",
+    tableType: "matrix",
+    ignoreRows: {
+      values: ["benefits information","Note: Not all benefits are applicable to all Taxable Values (i.e. County, School Board, City, Regional)."],
+      columns: [0],
+      caseSensitive: false
+    },
+    function: "getalldata",
+  },
   buildingInformation: {
     tableSelector: "pa-buildinginformation div table",
+    tableType: "vertical",
+    ignoreRows: {
+      indices:[0]
+    },
+    function: "getalldata",
+  },
+  extraFeatures: {
+    tableSelector: "pa-extrafeatures div table",
     tableType: "vertical",
     ignoreRows: {
       indices:[0]
@@ -442,3 +454,5 @@ const collierSchema = {
     function: "getbyselectors",
   },
 };
+
+
